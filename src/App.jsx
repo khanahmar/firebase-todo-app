@@ -10,7 +10,7 @@ import {
   doc,
   onSnapshot,
 } from "firebase/firestore"
-import { async } from "@firebase/util"
+
 
 function App() {
   const todoCollection = collection(db, "todos")
@@ -20,17 +20,19 @@ function App() {
   const [currentId, setCurrentId] = React.useState("")
 
   React.useEffect(() => {
+
     const unsubscribe = onSnapshot(todoCollection, (snapshot) => {
       setTodos(
         snapshot.docs.map((doc) => {
           return { data: doc.data(), id: doc.id }
         })
       )
+
       return () => {
         unsubscribe()
       }
     })
-  }, [])
+  }, [todos])
 
   async function updateTodos() {
     const docRef = doc(db, "todos", currentId)
