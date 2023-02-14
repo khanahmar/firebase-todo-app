@@ -1,4 +1,4 @@
-import React from "react"
+import React, { useState } from "react"
 import "./App.css"
 import Todo from "./Todo"
 import { db } from "./firebase"
@@ -10,17 +10,27 @@ import {
   doc,
   onSnapshot,
 } from "firebase/firestore"
-
+import { signInWithPopup } from "firebase/auth"
+import { auth, provider } from "./firebase"
 
 function App() {
   const todoCollection = collection(db, "todos")
-  const [todos, setTodos] = React.useState([])
-  const [inpValue, setInpValue] = React.useState("")
-  const [checkIt, setCheckIt] = React.useState(false)
-  const [currentId, setCurrentId] = React.useState("")
+  const [todos, setTodos] = useState([])
+  const [inpValue, setInpValue] = useState("")
+  const [checkIt, setCheckIt] = useState(false)
+  const [currentId, setCurrentId] = useState("")
+  const [user, setUser] = useState("")
+
+  const signInWithGoogle = async () => {
+    try {
+      const result = await signInWithPopup(auth, provider)
+      setUser(result.user.email)
+    } catch (err) {
+      console.log(err)
+    }
+  }
 
   React.useEffect(() => {
-
     const unsubscribe = onSnapshot(todoCollection, (snapshot) => {
       setTodos(
         snapshot.docs.map((doc) => {
@@ -32,7 +42,7 @@ function App() {
         unsubscribe()
       }
     })
-  }, [todos])
+  }, [])
 
   async function updateTodos() {
     const docRef = doc(db, "todos", currentId)
@@ -46,7 +56,7 @@ function App() {
       updateTodos()
     } else {
       if (inpValue !== "") {
-        addDoc(todoCollection, { text: inpValue, isDone: false })
+        addDoc(todoCollection, { text: inpValue, isDone: false, email: user })
         setInpValue("")
         setCheckIt(false)
       }
@@ -70,34 +80,46 @@ function App() {
   }
 
   return (
-    <div className="App">
-      <h1>
-        <strong>Tasks </strong>
-        <span>Lists</span>
-      </h1>
-      <div className="inputs">
-        <input
-          type="text"
-          value={inpValue}
-          onChange={(e) => setInpValue(e.target.value)}
-        />
-        <button onClick={addTodo}>{checkIt ? "Update" : "Add"}</button>
-      </div>
-      <ul>
-        {todos.map((todo) => {
-          return (
-            <Todo
-              id={todo.id}
-              key={todo.id}
-              text={todo.data.text}
-              isDone={todo.data.isDone}
-              updateIt={updateIt}
-              deleteTodo={deleteTodo}
-              boxChecked={boxChecked}
+    <div className="container">
+      {!user && (
+        <button onClick={signInWithGoogle} className="signin">
+          Sign in with google
+        </button>
+      )}
+
+      {user && (
+        <div className="App">
+          <h1>
+            <strong>Tasks </strong>
+            <span>Lists</span>
+          </h1>
+          <div className="inputs">
+            <input
+              type="text"
+              value={inpValue}
+              onChange={(e) => setInpValue(e.target.value)}
             />
-          )
-        })}
-      </ul>
+            <button onClick={addTodo}>{checkIt ? "Update" : "Add"}</button>
+          </div>
+          <ul>
+            {todos.map((todo) => {
+              if (todo.data.email === user) {
+                return (
+                  <Todo
+                    id={todo.id}
+                    key={todo.id}
+                    text={todo.data.text}
+                    isDone={todo.data.isDone}
+                    updateIt={updateIt}
+                    deleteTodo={deleteTodo}
+                    boxChecked={boxChecked}
+                  />
+                )
+              }
+            })}
+          </ul>
+        </div>
+      )}
     </div>
   )
 }
